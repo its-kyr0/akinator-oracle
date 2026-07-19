@@ -41,6 +41,10 @@
 
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 // ---------------- WIFI ACCESS POINT SETTINGS ----------------
 const char* AP_SSID = "Akinator-NodeMCU";
@@ -590,6 +594,13 @@ void handleState() {
   } else if (!askedIdiotQuestion) {
     json = String("{\"mode\":\"question\",\"text\":\"Is your character an idiot?\",\"q\":0,\"maxq\":") + MAX_QUESTIONS + "}";
   } else if (waitingForGuessConfirm) {
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Guess:");
+
+    lcd.setCursor(0,1);
+    lcd.print(CHARACTERS[guessIndex].name);
+
     json = String("{\"mode\":\"guess\",\"text\":\"") + CHARACTERS[guessIndex].name + "\",\"q\":" + questionsAskedCount + ",\"maxq\":" + MAX_QUESTIONS + "}";
   } else {
     json = String("{\"mode\":\"question\",\"text\":\"") + QUESTIONS[currentQuestionIndex].text + "\",\"q\":" + questionsAskedCount + ",\"maxq\":" + MAX_QUESTIONS + "}";
@@ -625,6 +636,10 @@ void handleAnswer() {
     return;
   }
 
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Thinking...");
+
   if (!waitingForGuessConfirm && !gameOver && !likhithMode) {
     applyAnswer(currentQuestionIndex, yes);
     advanceGame();
@@ -638,8 +653,20 @@ void handleConfirm() {
     gameOver = true;
     gameWon = true;
     setGameLED(0, 1, 0);
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print(CHARACTERS[guessIndex].name);
+
+    lcd.setCursor(0,1);
+    lcd.print("Correct!");
   } else {
     candidateActive[guessIndex] = false;
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print(CHARACTERS[guessIndex].name);
+
+    lcd.setCursor(0,1);
+    lcd.print("Wrong!");
     guessesTried++;
     if (guessesTried >= MAX_GUESSES) {
       gameOver = true;
@@ -661,11 +688,28 @@ void handleLikhithAck() {
 void handleRestart() {
   resetGame();
   advanceGame();
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("New Game");
+
+  lcd.setCursor(0,1);
+  lcd.print(WiFi.softAPIP());
   server.send(200, "text/plain", "ok");
 }
 
 void setup() {
   Serial.begin(115200);
+
+  lcd.init();
+  lcd.backlight();
+
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Akinator Ready");
+
+  lcd.setCursor(0,1);
+  lcd.print(WiFi.softAPIP());
+
   pinMode(PIN_RED, OUTPUT);
   pinMode(PIN_GREEN, OUTPUT);
   pinMode(PIN_BLUE, OUTPUT);
@@ -680,6 +724,13 @@ void setup() {
   Serial.println("Connect your phone/laptop to that network, then open:");
   Serial.print("http://");
   Serial.println(WiFi.softAPIP());
+
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Connect to:");
+
+  lcd.setCursor(0,1);
+  lcd.print(WiFi.softAPIP());
 
   resetGame();
   advanceGame();
